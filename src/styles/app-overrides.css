@@ -1,0 +1,167 @@
+/* Keep Mantine from fighting prototype shell */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif !important;
+  background: var(--mantine-gray-0, #f8f9fa);
+  color: var(--mantine-color-text, #343a40);
+}
+
+/* Prefer prototype card look over Mantine Paper chrome */
+.card.mantine-Paper-root,
+.card[data-with-border] {
+  border: 1px solid var(--mantine-gray-2, #e9ecef) !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+}
+
+/*
+ * PrototypeHost wraps .schedule-page in an extra div. That broke the flex
+ * height chain that enables overflow scroll on the queue list + timeline.
+ * Re-bridge page-body → host → schedule-page so panels get a max height.
+ */
+.page-body:has(.schedule-page),
+.page-body:has(.schedule-range-page) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-body:has(.schedule-page) > [data-prototype-host],
+.page-body:has(.schedule-range-page) > [data-prototype-host] {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-body:has(.schedule-page) > [data-prototype-host] > .schedule-page,
+.page-body:has(.schedule-range-page) > [data-prototype-host] > .schedule-range-page,
+.page-body:has(.schedule-range-page) > [data-prototype-host] > .schedule-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Ensure nested queue + timeline scroll surfaces work once height is capped */
+.schedule-patients-card .timeline-patients-list,
+.timeline-queue-panel .timeline-patients-list {
+  overflow-y: auto !important;
+  min-height: 0;
+}
+
+.schedule-timeline-card .timeline-wrap,
+.schedule-timeline-card #timeline-container {
+  min-height: 0;
+}
+
+.schedule-timeline-card .timeline-wrap {
+  overflow: auto !important;
+}
+
+/* Native prototype toolbar/selects are replaced by Mantine in the page header */
+.schedule-ops-filters,
+.schedule-ops-preview,
+#bulk-assign-btn,
+.schedule-view-toggle {
+  display: none !important;
+}
+
+.timeline-queue-search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 8px;
+}
+
+.navbar-footer {
+  padding-top: 6px;
+  padding-bottom: 4px;
+}
+
+.navbar-footer-powered {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 4px 4px 2px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.navbar-footer-powered-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--mantine-color-dimmed, #868e96);
+  line-height: 1.2;
+  text-transform: lowercase;
+  flex-shrink: 0;
+}
+
+.navbar-footer-powered-logo {
+  display: block;
+  height: 32px;
+  width: auto;
+  max-width: 100%;
+  flex: 0 1 auto;
+}
+
+.app-shell.sidebar-collapsed .navbar-footer-powered-label {
+  display: none;
+}
+
+.app-shell.sidebar-collapsed .navbar-footer-powered {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.app-shell.sidebar-collapsed .navbar-footer-powered-logo {
+  height: 18px;
+  max-width: 40px;
+  object-fit: contain;
+}
+
+
+
+/* Setup List — keep header/body columns locked and actions from shifting */
+table.data-table--setups {
+  table-layout: fixed;
+}
+
+table.data-table--setups th,
+table.data-table--setups td {
+  vertical-align: middle;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+table.data-table--setups td.table-col-actions,
+table.data-table--setups th.table-col-actions {
+  overflow: visible;
+  white-space: nowrap;
+}
+
+table.data-table--setups .table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+

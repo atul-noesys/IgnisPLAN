@@ -1,0 +1,41 @@
+{
+  "name": "ignis-plan",
+  "version": "0.1.0",
+  "description": "IgnisPLAN Diagnostic Ops — React 19 + Vite 5 + Mantine 8",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 10002",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .ts,.tsx,.js"
+  },
+  "dependencies": {
+    "@mantine/core": "^8.0.0",
+    "@mantine/dates": "^8.3.18",
+    "@mantine/form": "^8.0.0",
+    "@mantine/hooks": "^8.0.0",
+    "@mantine/notifications": "^8.3.18",
+    "@tabler/icons-react": "^3.0.0",
+    "@tanstack/react-query": "^5.28.0",
+    "axios": "^1.6.2",
+    "clsx": "^2.0.0",
+    "date-fns": "^3.0.0",
+    "jwt-decode": "^4.0.0",
+    "react": "^19.0.0-rc.0",
+    "react-dom": "^19.0.0-rc.0",
+    "react-router-dom": "^6.20.0",
+    "uuid": "^9.0.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/react": "^19.0.0-rc.0",
+    "@types/react-dom": "^19.0.0-rc.0",
+    "@types/uuid": "^9.0.7",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.54.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  },
+  "packageManager": "pnpm@9.12.1+sha1.7084e7df42ee1d221994c2c2599277a2a937f050"
+}

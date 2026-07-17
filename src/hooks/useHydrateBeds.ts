@@ -1,11 +1,9 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { Store } from "@/lib/prototype";
-import { useAppStore } from "@/store/StoreContext";
-import { BEDS_QUERY_KEY, useBeds, transformRowToBed, type Bed } from "@/hooks/useBeds";
+import { BEDS_QUERY_KEY, useBeds, type Bed } from "@/hooks/useBeds";
 import {
   ALLOCATIONS_QUERY_KEY,
-  transformRowToAllocation,
   useCurrentAllocations,
 } from "@/hooks/useCurrentAllocations";
 import { buildBedsQueueFromAllocations, mergeAllocationBeds } from "@/lib/bedsAllocationMapper";
@@ -14,45 +12,92 @@ import type { NgaugeDataRow, PaginatedDataResponse } from "@/store/ngauge-store"
 const BEDS_LIMIT = 100;
 const ALLOCATIONS_LIMIT = 500;
 
+const BEDS_PAGE_QUERY_KEY = [
+  BEDS_QUERY_KEY[0],
+  BEDS_QUERY_KEY[1],
+  1,
+  BEDS_LIMIT,
+  undefined,
+  undefined,
+  "paginated",
+] as const;
+
+const ALLOCATIONS_PAGE_QUERY_KEY = [
+  ALLOCATIONS_QUERY_KEY[0],
+  ALLOCATIONS_QUERY_KEY[1],
+  1,
+  ALLOCATIONS_LIMIT,
+  undefined,
+  undefined,
+  "paginated",
+] as const;
+
 let clearBedsOverlayAppliedKey: (() => void) | null = null;
+
+function readCachedPaginatedRows(
+  queryClient: QueryClient,
+  queryKey: readonly unknown[],
+): NgaugeDataRow[] | null {
+  const cached = queryClient.getQueryData<PaginatedDataResponse>(queryKey);
+  if (!cached) return null;
+  return Array.isArray(cached.data) ? cached.data : [];
+}
 
 function readPaginatedRows(
   queryClient: QueryClient,
   queryKeyPrefix: readonly (string | number)[],
-): NgaugeDataRow[] {
+): NgaugeDataRow[] | null {
   const entries = queryClient.getQueriesData<PaginatedDataResponse>({
     queryKey: [...queryKeyPrefix],
   });
-  if (!entries.length) return [];
+  if (!entries.length) return null;
 
   let best: PaginatedDataResponse | undefined;
   for (const [, data] of entries) {
-    if (!data?.data?.length) continue;
-    if (!best || data.data.length > (best.data?.length ?? 0)) {
+    if (!data) continue;
+    const len = data.data?.length ?? 0;
+    if (!best || len > (best.data?.length ?? 0)) {
       best = data;
     }
   }
-  return best?.data ?? [];
+  if (!best) return null;
+  return Array.isArray(best.data) ? best.data : [];
 }
 
-/** Refetch allocation queries and sync prototype Store before timeline re-render. */
+function resolveCachedRows(
+  queryClient: QueryClient,
+  exactKey: readonly unknown[],
+  prefix: readonly (string | number)[],
+): NgaugeDataRow[] | null {
+  return readCachedPaginatedRows(queryClient, exactKey) ?? readPaginatedRows(queryClient, prefix);
+}
+
+/** Refetch allocation queries; next render re-syncs prototype Store from cache. */
 export async function refreshLiveBedsStore(
   queryClient: QueryClient,
-): Promise<void> {
+): Promise<boolean> {
   await Promise.all([
     queryClient.refetchQueries({ queryKey: [...ALLOCATIONS_QUERY_KEY] }),
     queryClient.refetchQueries({ queryKey: [...BEDS_QUERY_KEY] }),
   ]);
 
-  const allocationRows = readPaginatedRows(queryClient, ALLOCATIONS_QUERY_KEY);
-  const bedRows = readPaginatedRows(queryClient, BEDS_QUERY_KEY);
-  const allocations = allocationRows.map(transformRowToAllocation);
-  const beds = bedRows.map(transformRowToBed);
-  const mergedBeds = mergeAllocationBeds(beds, allocations);
+  const allocationRows = resolveCachedRows(
+    queryClient,
+    ALLOCATIONS_PAGE_QUERY_KEY,
+    ALLOCATIONS_QUERY_KEY,
+  );
+  const bedRows = resolveCachedRows(
+    queryClient,
+    BEDS_PAGE_QUERY_KEY,
+    BEDS_QUERY_KEY,
+  );
 
-  Store.setLiveBedsInventory(buildBedsInventory(mergedBeds));
-  Store.setLiveBedsQueue(buildBedsQueueFromAllocations(allocations, mergedBeds));
+  if (allocationRows === null && bedRows === null) {
+    return false;
+  }
+
   clearBedsOverlayAppliedKey?.();
+  return true;
 }
 
 function slugId(prefix: string, label: string): string {
@@ -145,8 +190,6 @@ export function buildBedsInventory(beds: Bed[]) {
  * allocations from current_allocation_active (form 41).
  */
 export function useHydrateBeds(_scheduleDate?: string) {
-  const { refresh } = useAppStore();
-  const [storeReady, setStoreReady] = useState(false);
   const appliedKeyRef = useRef("");
 
   const {
@@ -165,11 +208,8 @@ export function useHydrateBeds(_scheduleDate?: string) {
 
   // Hydrate store once initial queries resolve — not on every background refetch.
   const mappingReady = !bedsLoading && !allocationsLoading;
-  const isLoading =
-    bedsLoading ||
-    bedsFetching ||
-    allocationsLoading ||
-    allocationsFetching;
+  const isInitialLoading = bedsLoading || allocationsLoading;
+  const isRefetching = bedsFetching || allocationsFetching;
 
   const mergedBeds = useMemo(
     () => mergeAllocationBeds(beds, allocations),
@@ -205,38 +245,19 @@ export function useHydrateBeds(_scheduleDate?: string) {
     };
   }, []);
 
-  useLayoutEffect(() => {
-    if (!mappingReady || !overlayKey) {
-      if (!appliedKeyRef.current) {
-        setStoreReady(false);
-        Store.setLiveBedsInventory({ beds: [], wards: [], departments: [] });
-        Store.setLiveBedsQueue({
-          bedRequests: [],
-          patients: [],
-          departments: [],
-          allotments: [],
-        });
-      }
-      return;
-    }
-
-    if (appliedKeyRef.current === overlayKey) {
-      return;
-    }
-
+  // Sync prototype Store during render so PrototypeHost always reads fresh data
+  // (child useLayoutEffect runs before parent effects in React).
+  if (mappingReady && overlayKey && appliedKeyRef.current !== overlayKey) {
     Store.setLiveBedsInventory(buildBedsInventory(mergedBeds));
     Store.setLiveBedsQueue(buildBedsQueueFromAllocations(allocations, mergedBeds));
     appliedKeyRef.current = overlayKey;
-    setStoreReady(true);
-    refresh();
-    // beds / allocations reflected in overlayKey
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- overlayKey is the content fingerprint
-  }, [mappingReady, overlayKey, refresh]);
+  }
+
+  const isReady = mappingReady && Boolean(overlayKey) && appliedKeyRef.current === overlayKey;
 
   useLayoutEffect(() => {
     return () => {
       appliedKeyRef.current = "";
-      setStoreReady(false);
       Store.clearLiveBedsInventory();
       Store.clearLiveBedsQueue();
     };
@@ -248,8 +269,10 @@ export function useHydrateBeds(_scheduleDate?: string) {
   );
 
   return {
-    isReady: mappingReady && storeReady,
-    isLoading,
+    isReady,
+    isInitialLoading,
+    isRefetching,
+    hydrationKey: overlayKey,
     error: bedsError || allocationsError || null,
     bedCount: beds.length,
     awaitingCount: queueFromAllocations.bedRequests.length,

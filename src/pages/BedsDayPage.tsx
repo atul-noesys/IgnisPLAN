@@ -29,7 +29,7 @@ export function BedsDayPage() {
   const queryClient = useQueryClient();
   const [statsHtml, setStatsHtml] = useState("");
 
-  const { isReady, isLoading, error } = useHydrateBeds(date);
+  const { isReady, hydrationKey, error } = useHydrateBeds(date);
 
   useEffect(() => {
     globalThis.__ignisAssignBedsToPatients = async (
@@ -55,7 +55,7 @@ export function BedsDayPage() {
     headerStatsHtml: statsHtml,
   });
 
-  const showSkeleton = !isReady || isLoading;
+  const showSkeleton = !isReady;
 
   const render = useCallback(() => {
     const headerStats = showSkeleton
@@ -109,8 +109,8 @@ export function BedsDayPage() {
   );
 
   const hostKey = useMemo(
-    () => `${date}-${version}-${showSkeleton ? "skeleton" : "ready"}`,
-    [date, version, showSkeleton],
+    () => `${date}-${version}-${hydrationKey || "loading"}-${showSkeleton ? "skeleton" : "ready"}`,
+    [date, version, hydrationKey, showSkeleton],
   );
 
   if (error) {

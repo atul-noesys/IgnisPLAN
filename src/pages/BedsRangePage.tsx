@@ -26,7 +26,7 @@ export function BedsRangePage() {
   const [statsHtml, setStatsHtml] = useState("");
   const date = UI.todayISO() as string;
 
-  const { isReady, isLoading, error } = useHydrateBeds(date);
+  const { isReady, hydrationKey, error } = useHydrateBeds(date);
 
   useEffect(() => {
     globalThis.__ignisAssignBedsToPatients = async (
@@ -52,7 +52,7 @@ export function BedsRangePage() {
     headerStatsHtml: statsHtml,
   });
 
-  const showSkeleton = !isReady || isLoading;
+  const showSkeleton = !isReady;
 
   const render = useCallback(() => {
     const headerStats = showSkeleton
@@ -105,8 +105,8 @@ export function BedsRangePage() {
   );
 
   const hostKey = useMemo(
-    () => `${date}-${version}-${showSkeleton ? "skeleton" : "ready"}`,
-    [date, version, showSkeleton],
+    () => `${date}-${version}-${hydrationKey || "loading"}-${showSkeleton ? "skeleton" : "ready"}`,
+    [date, version, hydrationKey, showSkeleton],
   );
 
   if (error) {

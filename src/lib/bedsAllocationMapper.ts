@@ -3,6 +3,7 @@ import type { CurrentAllocation } from "@/hooks/useCurrentAllocations";
 import {
   getAllocationCategory,
   isConfirmedAllocation,
+  isNullishField,
   parseAdmissionDatetime,
 } from "@/hooks/useCurrentAllocations";
 
@@ -206,6 +207,11 @@ export function toStoreAllotmentFromAllocation(
 ) {
   const plan = carePlan(allocation);
   const bedId = resolveBedId(allocation.bedId, beds);
+  const staffName = allocation.staffName?.trim()
+    ? allocation.staffName.trim()
+    : !isNullishField(allocation.staffId)
+      ? allocation.staffId.trim()
+      : "Unknown";
   const allotment: Record<string, unknown> = {
     id: `allot-${allocation.recordId}`,
     bedRequestId: allocation.recordId,
@@ -216,8 +222,8 @@ export function toStoreAllotmentFromAllocation(
     status: "Confirmed",
     bookingMode: plan.bookingMode,
     staffId: allocation.staffId,
-    staffName: allocation.staffName,
-    staffname: allocation.staffName,
+    staffName,
+    staffname: staffName,
     role: allocation.role,
   };
 
@@ -260,7 +266,7 @@ export function buildBedsQueueFromAllocations(
         allotments.push(toStoreAllotmentFromAllocation(allocation, beds));
         break;
       default:
-        // partial (only bed or only staff) — not shown in queue or timeline
+        // staff only, no bed — not shown in queue or timeline
         break;
     }
   }

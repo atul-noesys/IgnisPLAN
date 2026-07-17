@@ -369,6 +369,10 @@ globalThis.BedSlots = {
     var scanHorizon = options.scanHorizon !== false;
     var wardMap = {};
 
+    if (preferredAdmit && rangeStart < preferredAdmit) {
+      rangeStart = preferredAdmit;
+    }
+
     wards.forEach(function (ward) {
       wardMap[ward.id] = ward;
     });
@@ -381,6 +385,9 @@ globalThis.BedSlots = {
       }
 
       function pushSlot(admitDate) {
+        if (preferredAdmit && admitDate < preferredAdmit) {
+          return;
+        }
         if (!self.isBedFree(bed.id, admitDate, expectedDays, allotments, excludeRequestId)) {
           return;
         }

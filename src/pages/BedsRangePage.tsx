@@ -1,19 +1,48 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "@mantine/core";
 import { IconAlertCircle } from "@tabler/icons-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PrototypeHost } from "@/components/PrototypeHost";
 import { QueueSearchPortal } from "@/components/QueueSearchPortal";
 import { useScheduleChromeToolbar } from "@/components/ScheduleToolbar";
 import { useHydrateBeds } from "@/hooks/useHydrateBeds";
+import { assignBedsToPatients } from "@/lib/assignBedsToPatients";
 import { BedTimeline, UI } from "@/lib/prototype";
 import { useAppStore } from "@/store/StoreContext";
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __ignisAssignBedsToPatients:
+    | ((
+        recordIds: string[],
+        bedIds: string | string[],
+      ) => Promise<boolean>)
+    | undefined;
+}
+
 export function BedsRangePage() {
-  const { refresh } = useAppStore();
+  const { refresh, version } = useAppStore();
+  const queryClient = useQueryClient();
   const [statsHtml, setStatsHtml] = useState("");
   const date = UI.todayISO() as string;
 
   const { isReady, isLoading, error } = useHydrateBeds(date);
+
+  useEffect(() => {
+    globalThis.__ignisAssignBedsToPatients = async (
+      recordIds: string[],
+      bedIds: string | string[],
+    ) => {
+      const ok = await assignBedsToPatients(recordIds, bedIds, queryClient);
+      if (ok) {
+        refresh();
+      }
+      return ok;
+    };
+    return () => {
+      delete globalThis.__ignisAssignBedsToPatients;
+    };
+  }, [queryClient, refresh]);
 
   useScheduleChromeToolbar({
     mode: "beds",
@@ -37,7 +66,7 @@ export function BedsRangePage() {
       headerStats,
       actions: "",
     };
-  }, [showSkeleton]);
+  }, [showSkeleton, version]);
 
   const onHeader = useCallback(
     (p: { headerStats?: string }) => {
@@ -76,8 +105,8 @@ export function BedsRangePage() {
   );
 
   const hostKey = useMemo(
-    () => `${date}-${showSkeleton ? "skeleton" : "ready"}`,
-    [date, showSkeleton],
+    () => `${date}-${version}-${showSkeleton ? "skeleton" : "ready"}`,
+    [date, version, showSkeleton],
   );
 
   if (error) {

@@ -5266,3 +5266,13 @@ table.data-table tbody tr.row-inactive:hover {
   color: #228be6;
 }
 
+.timeline-block-operator-row--staff-unknown .timeline-block-avatar--staff,
+.timeline-block-avatar--staff-unknown {
+  background: var(--mantine-color-gray-5, #adb5bd);
+}
+
+.timeline-block-operator-row--staff-unknown .timeline-block-operator-name--staff,
+.timeline-block-operator-name--staff-unknown {
+  color: var(--mantine-color-gray-6, #868e96);
+}
+

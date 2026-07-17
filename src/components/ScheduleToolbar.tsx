@@ -124,10 +124,10 @@ export function useScheduleChromeToolbar({
                       await ScheduleTimeline.applyBulkPreviewFromToolbar(date);
                     if (ok) setPreviewCount(0);
                   } else {
-                    BedTimeline.applyBulkPreviewFromToolbar(
+                    const ok = await BedTimeline.applyBulkPreviewFromToolbar(
                       date || SCHEDULE_START,
                     );
-                    setPreviewCount(0);
+                    if (ok) setPreviewCount(0);
                   }
                   refresh();
                 } finally {

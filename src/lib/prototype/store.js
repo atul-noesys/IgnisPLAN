@@ -2014,13 +2014,11 @@ const Store = {
 
   allocationIsConfirmed(allotment) {
     return (
-      allotment &&
-      !this.isNullishAllocationField(allotment.bedId) &&
-      !this.isNullishAllocationField(allotment.staffId)
+      allotment && !this.isNullishAllocationField(allotment.bedId)
     );
   },
 
-  /** Live timeline: current_allocation_active rows with bed_id and staff_id both set. */
+  /** Live timeline: allocations with a bed assigned (staff optional). */
   getConfirmedAllotments() {
     var self = this;
     var list;
@@ -2036,10 +2034,7 @@ const Store = {
       if (allotment.status === "Cancelled") {
         return false;
       }
-      if (self.hasLiveBedsQueue()) {
-        return self.allocationIsConfirmed(allotment);
-      }
-      return true;
+      return self.allocationIsConfirmed(allotment);
     });
   },
 

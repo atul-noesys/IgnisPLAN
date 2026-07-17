@@ -8,6 +8,11 @@ import {
 
 export const ALLOCATIONS_FORM_ID = 41;
 export const ALLOCATIONS_TABLE = "current_allocation_active";
+export const ALLOCATIONS_RECORD_ID_FIELD = "recordid";
+export const ALLOCATIONS_QUERY_KEY = [
+  ALLOCATIONS_TABLE,
+  ALLOCATIONS_FORM_ID,
+] as const;
 
 export type CurrentAllocation = {
   recordId: string;
@@ -67,17 +72,28 @@ export function isAwaitingAllocation(row: NgaugeDataRow | CurrentAllocation): bo
   return isNullishField(bedId) && isNullishField(staffId);
 }
 
-/** Confirmed on timeline: both bed and staff assigned. */
+/** Beds timeline board: bed is assigned (staff may still be missing). */
 export function isConfirmedAllocation(row: NgaugeDataRow | CurrentAllocation): boolean {
+  const bedId = "bedId" in row ? row.bedId : pick(row as NgaugeDataRow, ["bed_id", "bedId", "bedid"]);
+  return !isNullishField(bedId);
+}
+
+/** Both bed and staff assigned. */
+export function isFullyAssignedAllocation(
+  row: NgaugeDataRow | CurrentAllocation,
+): boolean {
   const bedId = "bedId" in row ? row.bedId : pick(row as NgaugeDataRow, ["bed_id", "bedId", "bedid"]);
   const staffId =
     "staffId" in row ? row.staffId : pick(row as NgaugeDataRow, ["staffid", "staffId", "staff_id"]);
   return !isNullishField(bedId) && !isNullishField(staffId);
 }
 
-/** One of bed or staff set, but not both — excluded from queue and timeline. */
+/** Staff assigned but no bed — excluded from queue and timeline. */
 export function isPartialAllocation(row: NgaugeDataRow | CurrentAllocation): boolean {
-  return !isAwaitingAllocation(row) && !isConfirmedAllocation(row);
+  const bedId = "bedId" in row ? row.bedId : pick(row as NgaugeDataRow, ["bed_id", "bedId", "bedid"]);
+  const staffId =
+    "staffId" in row ? row.staffId : pick(row as NgaugeDataRow, ["staffid", "staffId", "staff_id"]);
+  return isNullishField(bedId) && !isNullishField(staffId);
 }
 
 export type AllocationCategory = "awaiting" | "confirmed" | "partial";

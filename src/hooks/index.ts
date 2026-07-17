@@ -131,6 +131,8 @@ export {
   useCurrentAllocations,
   ALLOCATIONS_FORM_ID,
   ALLOCATIONS_TABLE,
+  ALLOCATIONS_RECORD_ID_FIELD,
+  ALLOCATIONS_QUERY_KEY,
   transformRowToAllocation,
   isAwaitingAllocation,
   isConfirmedAllocation,

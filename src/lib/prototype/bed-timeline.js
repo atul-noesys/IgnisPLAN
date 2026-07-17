@@ -254,18 +254,26 @@ const BedTimeline = {
 
   pickBedForRequest(request, allotments, anchorDate) {
     var mode = this.getBedsPageMode();
-    var rangeStart = this.rangeStart(anchorDate || request.requestedAdmitDate);
+    var expectedDays = request.expectedDays || 1;
+    var preferredAdmit = request.requestedAdmitDate;
+    var rangeStart = this.rangeStart(anchorDate || preferredAdmit);
+    if (preferredAdmit && rangeStart < preferredAdmit) {
+      rangeStart = preferredAdmit;
+    }
     var isDay = mode === "day";
+    var rangeEndExclusive = isDay
+      ? globalThis.BedSlots.addDays(preferredAdmit || rangeStart, expectedDays)
+      : this.rangeEndExclusive(rangeStart);
     return globalThis.BedSlots.pickBestBed(
       request,
       Store.getBeds(),
       Store.getWards(),
       allotments || this.rangeAllotments(rangeStart),
       {
-        admitDate: request.requestedAdmitDate,
+        admitDate: preferredAdmit,
         rangeStart: rangeStart,
-        rangeEndExclusive: this.rangeEndExclusive(rangeStart),
-        horizon: isDay ? 1 : globalThis.BedSlots.horizon(),
+        rangeEndExclusive: rangeEndExclusive,
+        horizon: isDay ? expectedDays : globalThis.BedSlots.horizon(),
         scanHorizon: !isDay,
       }
     );
@@ -358,6 +366,30 @@ const BedTimeline = {
       });
     }
 
+    function admitDateForWindow(request, window, exactDateOnly) {
+      var minAdmit = request.requestedAdmitDate;
+      var expectedDays = request.expectedDays || 1;
+      if (!minAdmit) {
+        return null;
+      }
+
+      if (exactDateOnly) {
+        if (minAdmit < window.start || minAdmit >= window.end) {
+          return null;
+        }
+      } else {
+        minAdmit = window.start < minAdmit ? minAdmit : window.start;
+        if (minAdmit >= window.end) {
+          return null;
+        }
+      }
+
+      if (globalThis.BedSlots.addDays(minAdmit, expectedDays) > window.end) {
+        return null;
+      }
+      return minAdmit;
+    }
+
     function packDailyGaps(exactDateOnly) {
       var progress = true;
       while (progress) {
@@ -369,12 +401,22 @@ const BedTimeline = {
           var windows = globalThis.BedSlots.freeWindows(bed.id, packStart, packEnd, allotments);
           windows.forEach(function (window) {
             var candidates = requests.filter(function (request) {
-              return (
-                !placedIds[request.id] &&
-                !globalThis.BedSlots.isHourlyRequest(request) &&
-                (request.expectedDays || 1) <= window.days &&
-                matchesBed(request, bed) &&
-                (!exactDateOnly || request.requestedAdmitDate === window.start)
+              if (
+                placedIds[request.id] ||
+                globalThis.BedSlots.isHourlyRequest(request) ||
+                !matchesBed(request, bed)
+              ) {
+                return false;
+              }
+              var admitDate = admitDateForWindow(request, window, exactDateOnly);
+              if (!admitDate) {
+                return false;
+              }
+              return globalThis.BedSlots.isBedFree(
+                bed.id,
+                admitDate,
+                request.expectedDays || 1,
+                allotments
               );
             });
             if (!candidates.length) {
@@ -383,6 +425,7 @@ const BedTimeline = {
             sortDailyCandidates(candidates);
             var request = candidates[0];
             var expectedDays = request.expectedDays || 1;
+            var admitDate = admitDateForWindow(request, window, exactDateOnly);
             var ward = wardMap[bed.wardId];
             pushPlacement(request, {
               bedId: bed.id,
@@ -391,9 +434,9 @@ const BedTimeline = {
               wardName: ward.name,
               wardType: ward.wardType,
               departmentId: ward.departmentId,
-              admitDate: window.start,
+              admitDate: admitDate,
               expectedDays: expectedDays,
-              dischargeDate: globalThis.BedSlots.addDays(window.start, expectedDays),
+              dischargeDate: globalThis.BedSlots.addDays(admitDate, expectedDays),
               bookingMode: "Daily",
               matchMode: matchModeFor(request, bed),
             });
@@ -413,6 +456,9 @@ const BedTimeline = {
           !globalThis.BedSlots.isHourlyRequest(request) ||
           !matchesBed(request, bed)
         ) {
+          continue;
+        }
+        if (request.requestedAdmitDate && date < request.requestedAdmitDate) {
           continue;
         }
         if (durationHint && (request.expectedMinutes || 120) > durationHint) {
@@ -701,7 +747,16 @@ const BedTimeline = {
     return '<div class="timeline-block-meta">' + pills + "</div>";
   },
 
-  renderStaffAvatar(staffName) {
+  isNullishStaffField(value) {
+    if (value === null || value === undefined) {
+      return true;
+    }
+    var text = String(value).trim().toLowerCase();
+    return text === "" || text === "null" || text === "undefined";
+  },
+
+  renderStaffAvatar(staffName, options) {
+    options = options || {};
     if (!staffName) {
       return "";
     }
@@ -709,8 +764,11 @@ const BedTimeline = {
       .replace(/[^A-Za-z0-9]/g, "")
       .slice(0, 2)
       .toUpperCase();
+    var unknownClass = options.unknown ? " timeline-block-avatar--staff-unknown" : "";
     return (
-      '<span class="timeline-block-avatar timeline-block-avatar--staff" title="' +
+      '<span class="timeline-block-avatar timeline-block-avatar--staff' +
+      unknownClass +
+      '" title="' +
       staffName +
       '">' +
       (initials || "??") +
@@ -777,12 +835,16 @@ const BedTimeline = {
     }
 
     var label = patient ? patient.name : allotment.id;
+    var rawStaffId = allotment.staffId || allotment.staffid || "";
+    var staffUnknown = this.isNullishStaffField(rawStaffId);
     var staffLabel =
       allotment.staffName ||
       allotment.staffname ||
-      allotment.staffId ||
-      allotment.staffid ||
-      "";
+      rawStaffId ||
+      "Unknown";
+    var staffNameClass = staffUnknown
+      ? " timeline-block-operator-name--staff-unknown"
+      : "";
     var lastDay = globalThis.BedSlots.addDays(allotment.dischargeDate, -1);
     var isNarrow = mode === "hourly" ? pos.width < 12 : pos.width < 12;
     var isCompact = mode === "hourly" ? pos.width < 18 : pos.width < 20;
@@ -814,36 +876,23 @@ const BedTimeline = {
     var procedurePct = 60;
     var lagPct = 20;
 
-    var operatorRow = "";
-    if (staffLabel) {
-      operatorRow =
-        '<div class="timeline-block-operator-row timeline-block-operator-row--staff">' +
-        this.renderStaffAvatar(staffLabel) +
-        '<div class="timeline-block-operator-info">' +
-        '<span class="timeline-block-operator-name timeline-block-operator-name--staff">' +
-        staffLabel +
-        "</span>" +
-        (allotment.role
-          ? '<span class="timeline-block-operator-designation">' +
-            allotment.role +
-            "</span>"
-          : "") +
-        "</div></div>";
-    } else if (bed) {
-      operatorRow =
-        '<div class="timeline-block-operator-row">' +
-        this.renderBedAvatar(bed, ward) +
-        '<div class="timeline-block-operator-info">' +
-        '<span class="timeline-block-operator-name">' +
-        bed.name +
-        "</span>" +
-        (ward
-          ? '<span class="timeline-block-operator-designation">' +
-            ward.name +
-            "</span>"
-          : "") +
-        "</div></div>";
-    }
+    var operatorRow =
+      '<div class="timeline-block-operator-row timeline-block-operator-row--staff' +
+      (staffUnknown ? " timeline-block-operator-row--staff-unknown" : "") +
+      '">' +
+      this.renderStaffAvatar(staffLabel, { unknown: staffUnknown }) +
+      '<div class="timeline-block-operator-info">' +
+      '<span class="timeline-block-operator-name timeline-block-operator-name--staff' +
+      staffNameClass +
+      '">' +
+      staffLabel +
+      "</span>" +
+      (allotment.role
+        ? '<span class="timeline-block-operator-designation">' +
+          allotment.role +
+          "</span>"
+        : "") +
+      "</div></div>";
 
     return (
       '<div class="timeline-block timeline-block--rich' +
@@ -1557,19 +1606,70 @@ const BedTimeline = {
     }
   },
 
-  applyBulkPreviewFromToolbar(anchorDate) {
+  async applyBulkPreviewFromToolbar(anchorDate) {
     var confirmBtn = document.getElementById("bulk-preview-confirm");
     var page = document.querySelector('.schedule-page[data-beds-date="' + anchorDate + '"]');
     var mode = this.getBedsPageMode();
+    var placements = this._bulkPreviewPlacements || [];
+    var recordIds = [];
+    var bedIds = [];
+
+    placements.forEach(function (placement) {
+      var recordId = placement.request && placement.request.id;
+      var bedId = placement.slot && placement.slot.bedId;
+      if (recordId && bedId) {
+        recordIds.push(recordId);
+        bedIds.push(bedId);
+      }
+    });
 
     if (confirmBtn) {
       confirmBtn.disabled = true;
     }
 
-    var result = this.applyBulkPreview(anchorDate);
+    var assignBeds = globalThis.__ignisAssignBedsToPatients;
+    var apiAssigned = false;
+    if (typeof assignBeds === "function" && recordIds.length) {
+      try {
+        var ok = await assignBeds(recordIds, bedIds);
+        if (!ok) {
+          if (confirmBtn) {
+            confirmBtn.disabled = false;
+          }
+          if (globalThis.UI && globalThis.UI.showToast) {
+            globalThis.UI.showToast(
+              "Bed allocation failed — could not update allocations on the server."
+            );
+          }
+          return false;
+        }
+        apiAssigned = true;
+      } catch (err) {
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+        }
+        if (globalThis.UI && globalThis.UI.showToast) {
+          globalThis.UI.showToast(
+            "Bed allocation failed — could not update allocations on the server."
+          );
+        }
+        return false;
+      }
+    }
+
+    var result;
+    if (apiAssigned) {
+      result = {
+        assigned: recordIds.length,
+        skipped: 0,
+        total: recordIds.length,
+      };
+    } else {
+      result = this.applyBulkPreview(anchorDate);
+    }
     this.clearSlotSuggestions();
 
-    if (page) {
+    if (page && !apiAssigned) {
       page.outerHTML =
         mode === "range" ? this.renderRangeView() : this.renderDayView(anchorDate);
       this.initQueueSuggestions(anchorDate);
@@ -1583,6 +1683,7 @@ const BedTimeline = {
     if (globalThis.UI && globalThis.UI.showToast) {
       UI.showToast(result.assigned + " bed" + (result.assigned === 1 ? "" : "s") + " allotted.");
     }
+    return true;
   },
 
   refreshDayWorkspace(anchorDate) {

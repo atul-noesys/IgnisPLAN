@@ -592,6 +592,59 @@ WHERE id IN (${idList})
       return false;
     }
   }
+
+  async assignBedsToAllocations(
+    formId: number,
+    tableName: string,
+    assignments: Array<{ recordId: string; bedId: string }>,
+    recordIdField = "recordid",
+  ): Promise<boolean> {
+    const rows = (assignments ?? [])
+      .map((item) => ({
+        recordId: String(item?.recordId ?? "").trim(),
+        bedId: String(item?.bedId ?? "").trim(),
+      }))
+      .filter((item) => item.recordId && item.bedId);
+
+    if (!formId || !tableName || rows.length === 0) {
+      return false;
+    }
+
+    for (const { recordId, bedId } of rows) {
+      const primaryKeys = [recordIdField, "recordId", "id"];
+      let existing: NgaugeDataRow | null = null;
+      let resolvedPrimaryKey = recordIdField;
+
+      for (const primaryKey of primaryKeys) {
+        existing = await this.getRow(formId, tableName, recordId, primaryKey);
+        if (existing) {
+          resolvedPrimaryKey = primaryKey;
+          break;
+        }
+      }
+
+      if (!existing) {
+        console.error("assignBedsToAllocations: row not found", recordId);
+        return false;
+      }
+
+      const result = await this.EditRowData(formId, tableName, {
+        rowData: { ...existing, bed_id: bedId },
+        primaryKeyData: { primaryKey: resolvedPrimaryKey, value: recordId },
+      });
+
+      if (!result.result) {
+        console.error(
+          "assignBedsToAllocations failed:",
+          recordId,
+          result.error,
+        );
+        return false;
+      }
+    }
+
+    return true;
+  }
 }
 
 export const ngaugeStore = new NgaugeStore();

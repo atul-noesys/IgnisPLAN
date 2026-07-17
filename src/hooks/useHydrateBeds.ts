@@ -1,12 +1,59 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { QueryClient } from "@tanstack/react-query";
 import { Store } from "@/lib/prototype";
 import { useAppStore } from "@/store/StoreContext";
-import { useBeds, type Bed } from "@/hooks/useBeds";
-import { useCurrentAllocations } from "@/hooks/useCurrentAllocations";
+import { BEDS_QUERY_KEY, useBeds, transformRowToBed, type Bed } from "@/hooks/useBeds";
+import {
+  ALLOCATIONS_QUERY_KEY,
+  transformRowToAllocation,
+  useCurrentAllocations,
+} from "@/hooks/useCurrentAllocations";
 import { buildBedsQueueFromAllocations, mergeAllocationBeds } from "@/lib/bedsAllocationMapper";
+import type { NgaugeDataRow, PaginatedDataResponse } from "@/store/ngauge-store";
 
 const BEDS_LIMIT = 100;
 const ALLOCATIONS_LIMIT = 500;
+
+let clearBedsOverlayAppliedKey: (() => void) | null = null;
+
+function readPaginatedRows(
+  queryClient: QueryClient,
+  queryKeyPrefix: readonly (string | number)[],
+): NgaugeDataRow[] {
+  const entries = queryClient.getQueriesData<PaginatedDataResponse>({
+    queryKey: [...queryKeyPrefix],
+  });
+  if (!entries.length) return [];
+
+  let best: PaginatedDataResponse | undefined;
+  for (const [, data] of entries) {
+    if (!data?.data?.length) continue;
+    if (!best || data.data.length > (best.data?.length ?? 0)) {
+      best = data;
+    }
+  }
+  return best?.data ?? [];
+}
+
+/** Refetch allocation queries and sync prototype Store before timeline re-render. */
+export async function refreshLiveBedsStore(
+  queryClient: QueryClient,
+): Promise<void> {
+  await Promise.all([
+    queryClient.refetchQueries({ queryKey: [...ALLOCATIONS_QUERY_KEY] }),
+    queryClient.refetchQueries({ queryKey: [...BEDS_QUERY_KEY] }),
+  ]);
+
+  const allocationRows = readPaginatedRows(queryClient, ALLOCATIONS_QUERY_KEY);
+  const bedRows = readPaginatedRows(queryClient, BEDS_QUERY_KEY);
+  const allocations = allocationRows.map(transformRowToAllocation);
+  const beds = bedRows.map(transformRowToBed);
+  const mergedBeds = mergeAllocationBeds(beds, allocations);
+
+  Store.setLiveBedsInventory(buildBedsInventory(mergedBeds));
+  Store.setLiveBedsQueue(buildBedsQueueFromAllocations(allocations, mergedBeds));
+  clearBedsOverlayAppliedKey?.();
+}
 
 function slugId(prefix: string, label: string): string {
   const slug = label
@@ -148,6 +195,15 @@ export function useHydrateBeds(_scheduleDate?: string) {
       .join(",");
     return `${bedsKey}|${queueKey}`;
   }, [mappingReady, mergedBeds, allocations]);
+
+  useLayoutEffect(() => {
+    clearBedsOverlayAppliedKey = () => {
+      appliedKeyRef.current = "";
+    };
+    return () => {
+      clearBedsOverlayAppliedKey = null;
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (!mappingReady || !overlayKey) {

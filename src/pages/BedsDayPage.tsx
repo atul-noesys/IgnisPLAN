@@ -1,22 +1,51 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "@mantine/core";
 import { IconAlertCircle } from "@tabler/icons-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { PrototypeHost } from "@/components/PrototypeHost";
 import { QueueSearchPortal } from "@/components/QueueSearchPortal";
 import { useScheduleChromeToolbar } from "@/components/ScheduleToolbar";
 import { useHydrateBeds } from "@/hooks/useHydrateBeds";
+import { assignBedsToPatients } from "@/lib/assignBedsToPatients";
 import { BedTimeline } from "@/lib/prototype";
 import { useAppStore } from "@/store/StoreContext";
 import { SCHEDULE_START } from "@/lib/routes";
 
+declare global {
+  // eslint-disable-next-line no-var
+  var __ignisAssignBedsToPatients:
+    | ((
+        recordIds: string[],
+        bedIds: string | string[],
+      ) => Promise<boolean>)
+    | undefined;
+}
+
 export function BedsDayPage() {
   const [params] = useSearchParams();
   const date = params.get("date") || SCHEDULE_START;
-  const { refresh } = useAppStore();
+  const { refresh, version } = useAppStore();
+  const queryClient = useQueryClient();
   const [statsHtml, setStatsHtml] = useState("");
 
   const { isReady, isLoading, error } = useHydrateBeds(date);
+
+  useEffect(() => {
+    globalThis.__ignisAssignBedsToPatients = async (
+      recordIds: string[],
+      bedIds: string | string[],
+    ) => {
+      const ok = await assignBedsToPatients(recordIds, bedIds, queryClient);
+      if (ok) {
+        refresh();
+      }
+      return ok;
+    };
+    return () => {
+      delete globalThis.__ignisAssignBedsToPatients;
+    };
+  }, [queryClient, refresh]);
 
   useScheduleChromeToolbar({
     mode: "beds",
@@ -40,7 +69,7 @@ export function BedsDayPage() {
       headerStats,
       actions: "",
     };
-  }, [date, showSkeleton]);
+  }, [date, showSkeleton, version]);
 
   const onHeader = useCallback(
     (p: { headerStats?: string }) => {
@@ -80,8 +109,8 @@ export function BedsDayPage() {
   );
 
   const hostKey = useMemo(
-    () => `${date}-${showSkeleton ? "skeleton" : "ready"}`,
-    [date, showSkeleton],
+    () => `${date}-${version}-${showSkeleton ? "skeleton" : "ready"}`,
+    [date, version, showSkeleton],
   );
 
   if (error) {

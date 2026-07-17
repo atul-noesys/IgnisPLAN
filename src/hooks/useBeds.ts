@@ -10,6 +10,7 @@ type SortType = { [keyValue: string]: string };
 
 export const BEDS_FORM_ID = 40;
 export const BEDS_TABLE = "hosp_beds";
+export const BEDS_QUERY_KEY = [BEDS_TABLE, BEDS_FORM_ID] as const;
 /** Primary key column in hosp_beds API rows */
 export const BED_ID_FIELD = "bed_id";
 

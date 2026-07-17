@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="initial-scale=1.0" />
+  <title>Infoveave</title>
+  <script type="text/ecmascript">
+    window.InfoveaveBaseURL = "https://infoveave.app";
+  </script>
+  <script src="/v8/vendor.js"></script>
+  <script type="text/ecmascript">
+    document.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const idParam = params.get("infoboardId");
+      const infoboardId = idParam !== null ? Number(idParam) || 5 : 5;
+      const token = localStorage.getItem("access_token");
+
+      window.RenderInfoboard({
+        tenant: "nooms",
+        token: token,
+        applicationUrl: "infoveave.app",
+        infoboardId: infoboardId,
+        dateRange: null,
+        view: "Desktop",
+        fitMode: "Height",
+      });
+    });
+  </script>
+  <script type="module" crossorigin src="/v8/assets/mobile-app.CzPfnRs5.js"></script>
+  <link rel="modulepreload" crossorigin href="/v8/assets/charts.D6xE-8ZL.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/draw.1LjimNmP.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/icons.S3_PtPfx.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/pivot.CceBwBAf.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/pdf.-AIUeXwf.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/graphql.Cpd2svOc.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/vi-VN-M7AON7JQ.CEnHVn7J.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/result-helper.BcR65Z3h.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/id-ID-SAP4L64H.D_vNX_Jj.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/ordinal-B6-f3MAq.DAOx55Wy.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/description-full-view.molymfGL.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/index.DOckRUbR.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/Kbd.BGXppedP.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/ColorInput.Bis6sSEy.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/context-menu.jbeuetSk.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/index.x2jff3OY.js">
+  <link rel="modulepreload" crossorigin href="/v8/assets/viewer.CMMRCWEL.js">
+  <link rel="stylesheet" crossorigin href="/v8/assets/id-ID-SAP4L64H.pT8MxOyM.css">
+  <link rel="stylesheet" crossorigin href="/v8/assets/description-full-view.zWHgzPa7.css">
+  <link rel="stylesheet" crossorigin href="/v8/assets/result-helper.D8QOaIiW.css">
+  <link rel="stylesheet" crossorigin href="/v8/assets/mobile-app.x36n6o7y.css">
+</head>
+
+<body data-show="mobile">
+  <div id="mobile-root"></div>
+</body>
+
+</html>

@@ -1,3 +1,4 @@
+import { InfoboardFromAPI } from "@/types/infoboard";
 import axios, { AxiosResponse } from "axios";
 
 export type NgaugeDataRow = Record<string, string | number | boolean | null>;
@@ -705,6 +706,27 @@ WHERE patientid IN (${idList});
         };
       })
       .filter((row): row is RevisedAllocationScheduleRow => row !== null);
+  }
+
+  async GetInfoboards(): Promise<InfoboardFromAPI[] | null> {
+    try {
+      let token = null;
+      if (typeof window !== "undefined") {
+        token = localStorage.getItem("access_token");
+      }
+      const result: AxiosResponse<InfoboardFromAPI[]> = await axios.get(
+        `${INFOVEAVE_BASE_URL}/api/v10/Infoboards`,
+        {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+        },
+      );
+      return result.data;
+    } catch (error) {
+      console.error("Error fetching infoboards:", error);
+      return null;
+    }
   }
 }
 

@@ -2153,6 +2153,152 @@ table.data-table td.table-col-actions {
   justify-content: space-between;
 }
 
+/* Dashboard — browser-style infoboard tabs, fill viewport height */
+.app-main:has(.dashboard-page) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: var(--mantine-spacing-md);
+  padding-bottom: var(--mantine-spacing-sm);
+}
+
+.page-container:has(.dashboard-page) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--mantine-spacing-md);
+  padding-bottom: var(--mantine-spacing-sm);
+}
+
+.page-body:has(.dashboard-page) {
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
+
+.dashboard-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.dashboard-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-page > .card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-tabs-list {
+  display: flex;
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.dashboard-tab {
+  position: relative;
+  flex: 0 1 auto;
+  max-width: 220px;
+  min-width: 96px;
+  padding: 8px 16px;
+  border: 1px solid var(--mantine-gray-3);
+  border-top: 2px solid transparent;
+  border-bottom: none;
+  border-radius: 0;
+  background: var(--mantine-gray-2);
+  color: var(--mantine-color-dimmed);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.dashboard-tab-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-tab:hover:not(.dashboard-tab--active) {
+  background: var(--mantine-gray-1);
+  color: var(--mantine-color-text);
+}
+
+.dashboard-tab--active {
+  background: #fff;
+  color: var(--mantine-color-text);
+  border-color: var(--mantine-gray-3);
+  border-top-color: var(--ignis-orange-from);
+  border-bottom: 1px solid #fff;
+  margin-bottom: -1px;
+  z-index: 1;
+}
+
+.dashboard-tab-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--mantine-gray-3);
+  border-top: none;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.dashboard-loading {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.dashboard-iframe-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dashboard-iframe-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.dashboard-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
 /* Table — Mantine Table striped highlightOnHover defaults */
 .data-table-wrap {
   overflow-x: auto;

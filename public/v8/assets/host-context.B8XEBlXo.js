@@ -1,0 +1,1 @@
+import{r as e,j as n}from"./draw.1LjimNmP.js";var s=(r=>(r[r.Word=0]="Word",r[r.Excel=1]="Excel",r[r.PowerPoint=2]="PowerPoint",r))(s||{});const t=e.createContext({host:1}),i=({children:r})=>{const o=typeof Word<"u"?0:typeof Excel<"u"?1:2;return n.jsx(t.Provider,{value:{host:o},children:r})},x=()=>e.useContext(t);export{i as H,s as a,x as u};

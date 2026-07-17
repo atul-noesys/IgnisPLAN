@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Group, SegmentedControl, Select } from "@mantine/core";
+import { Group, SegmentedControl, Select, Switch } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { BedTimeline, ScheduleTimeline } from "@/lib/prototype";
+import { useFetchRevisedAllocationSchedule } from "@/hooks/useRevisedAllocationSchedule";
 import { useAppStore } from "@/store/StoreContext";
 import { usePageChrome } from "@/store/PageChromeContext";
 import { SCHEDULE_START } from "@/lib/routes";
@@ -26,10 +27,15 @@ export function useScheduleChromeToolbar({
   const { setChrome } = usePageChrome();
   const { refresh } = useAppStore();
   const navigate = useNavigate();
+  const fetchRevisedAllocationSchedule = useFetchRevisedAllocationSchedule();
   const [severity, setSeverity] = useState("all");
   const [serviceType, setServiceType] = useState("all");
   const [previewCount, setPreviewCount] = useState(0);
   const [allocating, setAllocating] = useState(false);
+  const [revisedStaffOn, setRevisedStaffOn] = useState(false);
+  const [loadingRevisedStaff, setLoadingRevisedStaff] = useState(false);
+
+  const bedsDate = date || SCHEDULE_START;
 
   const filterScope =
     view === "range" && mode === "imaging"
@@ -92,6 +98,61 @@ export function useScheduleChromeToolbar({
       setAllocating(false);
     }
   }, [date, mode]);
+
+  const toggleRevisedStaff = useCallback(
+    async (checked: boolean) => {
+      if (mode !== "beds") return;
+
+      if (!checked) {
+        setRevisedStaffOn(false);
+        BedTimeline.clearRevisedStaffSchedule(bedsDate);
+        refresh();
+        return;
+      }
+
+      setLoadingRevisedStaff(true);
+      try {
+        const patientIds = BedTimeline.getBoardPatientIdsWithoutStaff();
+        if (!patientIds.length) {
+          (globalThis as { UI?: { showToast?: (msg: string) => void } }).UI?.showToast?.(
+            "No patients with unassigned staff on the board.",
+          );
+          setRevisedStaffOn(false);
+          return;
+        }
+
+        const rows = await fetchRevisedAllocationSchedule(patientIds);
+        if (!rows.length) {
+          (globalThis as { UI?: { showToast?: (msg: string) => void } }).UI?.showToast?.(
+            "No revised staff schedule found for unassigned patients.",
+          );
+          setRevisedStaffOn(false);
+          return;
+        }
+
+        const updated = BedTimeline.applyRevisedStaffSchedule(rows, bedsDate);
+        if (!updated) {
+          (globalThis as { UI?: { showToast?: (msg: string) => void } }).UI?.showToast?.(
+            "No revised staff could be applied to the board.",
+          );
+          setRevisedStaffOn(false);
+          return;
+        }
+
+        setRevisedStaffOn(true);
+        refresh();
+      } catch (error) {
+        console.error("toggleRevisedStaff failed:", error);
+        (globalThis as { UI?: { showToast?: (msg: string) => void } }).UI?.showToast?.(
+          "Failed to load revised staff schedule.",
+        );
+        setRevisedStaffOn(false);
+      } finally {
+        setLoadingRevisedStaff(false);
+      }
+    },
+    [bedsDate, fetchRevisedAllocationSchedule, mode, refresh],
+  );
 
   const toolbar = useMemo(
     () => (
@@ -202,14 +263,27 @@ export function useScheduleChromeToolbar({
         />
 
         {view === "day" || mode === "beds" ? (
-          <IgnisButton
-            size="compact-sm"
-            leftSection={IgnisIcons.allocate}
-            loading={allocating}
-            onClick={runAllocation}
-          >
-            Allocate
-          </IgnisButton>
+          <Group gap="xs" wrap="nowrap">
+            {mode === "beds" ? (
+              <Switch
+                size="xs"
+                label="Revised staff"
+                checked={revisedStaffOn}
+                disabled={loadingRevisedStaff}
+                onChange={(event) => {
+                  void toggleRevisedStaff(event.currentTarget.checked);
+                }}
+              />
+            ) : null}
+            <IgnisButton
+              size="compact-sm"
+              leftSection={IgnisIcons.allocate}
+              loading={allocating}
+              onClick={runAllocation}
+            >
+              Allocate
+            </IgnisButton>
+          </Group>
         ) : null}
       </Group>
     ),
@@ -225,6 +299,9 @@ export function useScheduleChromeToolbar({
       serviceOptions,
       serviceType,
       severity,
+      loadingRevisedStaff,
+      revisedStaffOn,
+      toggleRevisedStaff,
       view,
     ],
   );

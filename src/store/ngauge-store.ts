@@ -67,6 +67,12 @@ export type InfoveaveQueryRequest = {
   }>;
 };
 
+export type RevisedAllocationScheduleRow = {
+  patientId: string;
+  newStaffId: string;
+  newStaffName: string;
+};
+
 type InfoveaveQueryResponse = {
   data?: Array<Array<unknown>>;
   Data?: Array<Array<unknown>>;
@@ -644,6 +650,61 @@ WHERE id IN (${idList})
     }
 
     return true;
+  }
+
+  async getRevisedAllocationSchedule(
+    dataSourceId: number,
+    patientIds: string | string[],
+  ): Promise<RevisedAllocationScheduleRow[]> {
+    const ids = (Array.isArray(patientIds) ? patientIds : [patientIds])
+      .map((id) => String(id ?? "").trim())
+      .filter(Boolean);
+
+    if (!dataSourceId || ids.length === 0) {
+      return [];
+    }
+
+    const escapeSql = (value: string) => value.replace(/'/g, "''");
+    const idList = ids.map((id) => `'${escapeSql(id)}'`).join(", ");
+
+    const rows = await this.executeInfoveaveQuery({
+      dataSourceId,
+      query: `
+SELECT patientid, new_staffid, new_staffname
+FROM revised_allocation_schedule
+WHERE patientid IN (${idList});
+`.trim(),
+    });
+
+    return rows
+      .slice(1)
+      .map((row) => {
+        if (!Array.isArray(row) || row.length < 3) {
+          return null;
+        }
+
+        const patientIdValue = String(row[0] ?? "").trim();
+        const newStaffId = String(row[1] ?? "").trim();
+        const newStaffName = String(row[2] ?? "").trim();
+
+        if (
+          patientIdValue.toLowerCase() === "patientid" &&
+          newStaffId.toLowerCase() === "new_staffid"
+        ) {
+          return null;
+        }
+
+        if (!patientIdValue) {
+          return null;
+        }
+
+        return {
+          patientId: patientIdValue,
+          newStaffId,
+          newStaffName,
+        };
+      })
+      .filter((row): row is RevisedAllocationScheduleRow => row !== null);
   }
 }
 

@@ -755,6 +755,42 @@ const BedTimeline = {
     return text === "" || text === "null" || text === "undefined";
   },
 
+  getBoardPatientIdsWithoutStaff() {
+    return globalThis.Store.getBoardPatientIdsWithoutStaff();
+  },
+
+  refreshBoardWorkspace(anchorDate) {
+    var mode = this.getBedsPageMode();
+    var page = document.querySelector(
+      mode === "range"
+        ? ".schedule-page[data-beds-date]"
+        : '.schedule-page[data-beds-date="' + anchorDate + '"]'
+    );
+    if (!page) {
+      return;
+    }
+
+    page.outerHTML =
+      mode === "range" ? this.renderRangeView() : this.renderDayView(anchorDate);
+
+    if (mode === "range") {
+      this.initRangePage();
+    } else {
+      this.initDayPage(anchorDate);
+    }
+  },
+
+  applyRevisedStaffSchedule(rows, anchorDate) {
+    var updated = globalThis.Store.applyRevisedStaffToAllotments(rows || []);
+    this.refreshBoardWorkspace(anchorDate);
+    return updated;
+  },
+
+  clearRevisedStaffSchedule(anchorDate) {
+    globalThis.Store.clearRevisedStaffPreview();
+    this.refreshBoardWorkspace(anchorDate);
+  },
+
   renderStaffAvatar(staffName, options) {
     options = options || {};
     if (!staffName) {

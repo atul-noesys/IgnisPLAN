@@ -155,6 +155,97 @@ const Store = {
     this._clearLookupMaps();
   },
 
+  getBoardPatientIdsWithoutStaff() {
+    var self = this;
+    var seen = {};
+    var ids = [];
+
+    this.getConfirmedAllotments().forEach(function (allotment) {
+      var patientId = allotment.patientId;
+      if (!patientId || seen[patientId]) {
+        return;
+      }
+      if (
+        !self.isNullishAllocationField(allotment.staffId) ||
+        !self.isNullishAllocationField(allotment.staffid)
+      ) {
+        return;
+      }
+      seen[patientId] = true;
+      ids.push(patientId);
+    });
+
+    return ids;
+  },
+
+  applyRevisedStaffToAllotments(rows) {
+    if (!this._liveBedsQueue || !Array.isArray(this._liveBedsQueue.allotments)) {
+      return 0;
+    }
+
+    var self = this;
+    var byPatient = {};
+    (rows || []).forEach(function (row) {
+      if (row && row.patientId) {
+        byPatient[row.patientId] = row;
+      }
+    });
+
+    var updated = 0;
+    this._liveBedsQueue.allotments.forEach(function (allotment) {
+      if (!allotment.patientId || allotment.status === "Cancelled") {
+        return;
+      }
+      if (
+        !self.isNullishAllocationField(allotment.staffId) ||
+        !self.isNullishAllocationField(allotment.staffid)
+      ) {
+        return;
+      }
+
+      var row = byPatient[allotment.patientId];
+      if (!row || (!row.newStaffId && !row.newStaffName)) {
+        return;
+      }
+
+      if (!allotment._revisedStaffBackup) {
+        allotment._revisedStaffBackup = {
+          staffId: allotment.staffId,
+          staffName: allotment.staffName,
+          staffname: allotment.staffname,
+          role: allotment.role,
+        };
+      }
+
+      allotment.staffId = row.newStaffId || allotment.staffId;
+      allotment.staffName = row.newStaffName || row.newStaffId || allotment.staffName;
+      allotment.staffname = allotment.staffName;
+      allotment.role = "Nurse Assitant";
+      allotment._revisedStaffPreview = true;
+      updated += 1;
+    });
+
+    return updated;
+  },
+
+  clearRevisedStaffPreview() {
+    if (!this._liveBedsQueue || !Array.isArray(this._liveBedsQueue.allotments)) {
+      return;
+    }
+
+    this._liveBedsQueue.allotments.forEach(function (allotment) {
+      if (!allotment._revisedStaffPreview || !allotment._revisedStaffBackup) {
+        return;
+      }
+      allotment.staffId = allotment._revisedStaffBackup.staffId;
+      allotment.staffName = allotment._revisedStaffBackup.staffName;
+      allotment.staffname = allotment._revisedStaffBackup.staffname;
+      allotment.role = allotment._revisedStaffBackup.role;
+      delete allotment._revisedStaffPreview;
+      delete allotment._revisedStaffBackup;
+    });
+  },
+
   hasLiveBedsQueue() {
     return Boolean(this._liveBedsQueue);
   },

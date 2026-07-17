@@ -36,6 +36,11 @@ export type {
 export { useInfoveaveQuery } from "@/hooks/useInfoveaveQuery";
 export type { UseInfoveaveQueryResult } from "@/hooks/useInfoveaveQuery";
 
+export {
+  useRevisedAllocationSchedule,
+  useFetchRevisedAllocationSchedule,
+} from "@/hooks/useRevisedAllocationSchedule";
+
 export { useAddRow } from "@/hooks/useAddRow";
 export { useDeleteRow } from "@/hooks/useDeleteRow";
 export { useNguageRowData, ROW_QUERY_KEY } from "@/hooks/useRow";

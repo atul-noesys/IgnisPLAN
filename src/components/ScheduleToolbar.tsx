@@ -267,7 +267,7 @@ export function useScheduleChromeToolbar({
             {mode === "beds" ? (
               <Switch
                 size="xs"
-                label="Revised staff"
+                label="Allocate Staff"
                 checked={revisedStaffOn}
                 disabled={loadingRevisedStaff}
                 onChange={(event) => {
@@ -281,7 +281,7 @@ export function useScheduleChromeToolbar({
               loading={allocating}
               onClick={runAllocation}
             >
-              Allocate
+              {mode === "beds" ? "Allocate Bed" : "Allocate"}
             </IgnisButton>
           </Group>
         ) : null}

@@ -841,7 +841,7 @@ const BedTimeline = {
       allotment.staffName ||
       allotment.staffname ||
       rawStaffId ||
-      "Unknown";
+      "No Staff Allocated";
     var staffNameClass = staffUnknown
       ? " timeline-block-operator-name--staff-unknown"
       : "";

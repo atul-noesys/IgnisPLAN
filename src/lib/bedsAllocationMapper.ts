@@ -211,7 +211,7 @@ export function toStoreAllotmentFromAllocation(
     ? allocation.staffName.trim()
     : !isNullishField(allocation.staffId)
       ? allocation.staffId.trim()
-      : "Unknown";
+      : "No Staff Allocated";
   const allotment: Record<string, unknown> = {
     id: `allot-${allocation.recordId}`,
     bedRequestId: allocation.recordId,

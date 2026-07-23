@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Menu, Stack, Text } from "@mantine/core";
-import { IconLogout, IconUser as IconUserTabler } from "@tabler/icons-react";
+import { IconChevronDown, IconLogout, IconUser as IconUserTabler } from "@tabler/icons-react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { usePageChrome } from "@/store/PageChromeContext";
 
 const COLLAPSE_KEY = "scheduler-sidebar-collapsed";
+const MASTER_EXPAND_KEY = "scheduler-master-nav-expanded";
 
 type NavItem = {
   key: string;
@@ -128,11 +129,24 @@ function IconHome() {
   );
 }
 
-const navItems: NavItem[] = [
-  { key: "dashboard", path: "/", label: "Dashboard", icon: <IconHome /> },
-  { key: "services", path: "/services", label: "Services", icon: <IconList /> },
-  { key: "setups", path: "/setups", label: "Setups", icon: <IconBuilding /> },
-  { key: "patients", path: "/patients", label: "Patients", icon: <IconUser /> },
+function IconDatabase() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+      <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
+    </svg>
+  );
+}
+
+const dashboardNavItem: NavItem = {
+  key: "dashboard",
+  path: "/",
+  label: "Dashboard",
+  icon: <IconHome />,
+};
+
+const mainNavItems: NavItem[] = [
   {
     key: "request-queue",
     path: "/queue",
@@ -147,18 +161,24 @@ const navItems: NavItem[] = [
     match: (p) => p.startsWith("/schedule"),
   },
   {
-    key: "bed-master",
-    path: "/bed-master",
-    label: "Bed Master",
-    icon: <IconBed />,
-    match: (p) => p.startsWith("/bed-master"),
-  },
-  {
     key: "beds-day",
     path: "/beds",
     label: "Beds Allotment",
     icon: <IconBed />,
     match: (p) => p.startsWith("/beds"),
+  },
+];
+
+const masterNavItems: NavItem[] = [
+  { key: "services", path: "/services", label: "Services", icon: <IconList /> },
+  { key: "setups", path: "/setups", label: "Setups", icon: <IconBuilding /> },
+  { key: "patients", path: "/patients", label: "Patients", icon: <IconUser /> },
+  {
+    key: "bed-master",
+    path: "/bed-master",
+    label: "Beds",
+    icon: <IconBed />,
+    match: (p) => p.startsWith("/bed-master"),
   },
   {
     key: "events-log",
@@ -169,11 +189,42 @@ const navItems: NavItem[] = [
   },
 ];
 
-const helpItems = [
-  { key: "help-scheduling", label: "Request & Scheduling Guide" },
-  { key: "help-events", label: "Events & Reschedule Plans" },
-  { key: "help-support", label: "Support" },
-];
+function isNavItemActive(item: NavItem, pathname: string) {
+  return item.match
+    ? item.match(pathname)
+    : pathname === item.path || pathname.startsWith(item.path + "/");
+}
+
+function isMasterRouteActive(pathname: string) {
+  return masterNavItems.some((item) => isNavItemActive(item, pathname));
+}
+
+function renderNavLinks(
+  items: NavItem[],
+  pathname: string,
+  onNavigate: () => void,
+  nested = false,
+) {
+  return items.map((item) => {
+    const active = isNavItemActive(item, pathname);
+    return (
+      <NavLink
+        key={item.key}
+        to={item.path}
+        title={item.label}
+        className={({ isActive }) =>
+          "nav-link" +
+          (nested ? " nested" : "") +
+          (active || isActive ? " active" : "")
+        }
+        onClick={onNavigate}
+      >
+        <span className="nav-link-icon">{item.icon}</span>
+        <span className="nav-link-label">{item.label}</span>
+      </NavLink>
+    );
+  });
+}
 
 function isMobile() {
   return window.matchMedia("(max-width: 767px)").matches;
@@ -196,9 +247,21 @@ export function Layout() {
     return localStorage.getItem(COLLAPSE_KEY) === "1";
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [masterExpanded, setMasterExpanded] = useState(() => {
+    if (typeof localStorage === "undefined") return true;
+    const stored = localStorage.getItem(MASTER_EXPAND_KEY);
+    if (stored !== null) return stored === "1";
+    return true;
+  });
 
   useEffect(() => {
     setMobileOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (isMasterRouteActive(location.pathname)) {
+      setMasterExpanded(true);
+    }
   }, [location.pathname]);
 
   useEffect(() => {
@@ -215,6 +278,16 @@ export function Layout() {
     setCollapsed(next);
     localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
   };
+
+  const toggleMasterExpanded = () => {
+    setMasterExpanded((prev) => {
+      const next = !prev;
+      localStorage.setItem(MASTER_EXPAND_KEY, next ? "1" : "0");
+      return next;
+    });
+  };
+
+  const masterActive = isMasterRouteActive(location.pathname);
 
   const shellClass =
     "app-shell" +
@@ -248,45 +321,55 @@ export function Layout() {
         <div className="navbar-scroll">
           <div className="nav-stack">
             <nav className="nav-section" aria-label="Main navigation">
-              {navItems.map((item) => {
-                const active = item.match
-                  ? item.match(location.pathname)
-                  : location.pathname === item.path ||
-                    location.pathname.startsWith(item.path + "/");
-                return (
-                  <NavLink
-                    key={item.key}
-                    to={item.path}
-                    title={item.label}
-                    className={({ isActive }) =>
-                      "nav-link" + (active || isActive ? " active" : "")
-                    }
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <span className="nav-link-icon">{item.icon}</span>
-                    <span className="nav-link-label">{item.label}</span>
-                  </NavLink>
-                );
-              })}
-            </nav>
+              {renderNavLinks(
+                [dashboardNavItem],
+                location.pathname,
+                () => setMobileOpen(false),
+              )}
 
-            <div className="nav-help-section">
-              <div className="nav-help-label">Help &amp; Documentation</div>
-              <nav className="nav-section" aria-label="Help navigation">
-                {helpItems.map((item) => (
-                  <span
-                    key={item.key}
-                    className="nav-link disabled"
-                    title={item.label}
-                  >
-                    <span className="nav-link-icon">
-                      <IconList />
-                    </span>
-                    <span className="nav-link-label">{item.label}</span>
+              <div
+                className={
+                  "nav-group-section" + (masterExpanded ? " expanded" : "")
+                }
+              >
+                <button
+                  type="button"
+                  className={
+                    "nav-link nav-group-toggle" + (masterActive ? " active" : "")
+                  }
+                  aria-expanded={masterExpanded}
+                  aria-controls="master-nav"
+                  onClick={toggleMasterExpanded}
+                >
+                  <span className="nav-link-icon">
+                    <IconDatabase />
                   </span>
-                ))}
-              </nav>
-            </div>
+                  <span className="nav-link-label">Master</span>
+                  <span
+                    className={
+                      "nav-group-chevron" + (masterExpanded ? " expanded" : "")
+                    }
+                    aria-hidden="true"
+                  >
+                    <IconChevronDown size={16} stroke={1.75} />
+                  </span>
+                </button>
+                <div className="nav-group-children" id="master-nav">
+                  <nav className="nav-section" aria-label="Master navigation">
+                    {renderNavLinks(
+                      masterNavItems,
+                      location.pathname,
+                      () => setMobileOpen(false),
+                      true,
+                    )}
+                  </nav>
+                </div>
+              </div>
+
+              {renderNavLinks(mainNavItems, location.pathname, () =>
+                setMobileOpen(false),
+              )}
+            </nav>
           </div>
         </div>
 

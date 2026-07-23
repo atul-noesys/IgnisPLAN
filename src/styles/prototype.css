@@ -2333,6 +2333,7 @@ table.data-table td.table-col-actions {
 .dashboard-tab-panel {
   flex: 1;
   min-height: 0;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
   background: #fff;

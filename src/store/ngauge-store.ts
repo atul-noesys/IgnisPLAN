@@ -1,5 +1,8 @@
 import { InfoboardFromAPI } from "@/types/infoboard";
+import { INFOVEAVE_BASE_URL, INFOVEAVE_TENANT } from "@/config/infoveave";
 import axios, { AxiosResponse } from "axios";
+
+export { INFOVEAVE_BASE_URL, INFOVEAVE_TENANT };
 
 export type NgaugeDataRow = Record<string, string | number | boolean | null>;
 
@@ -81,12 +84,9 @@ type InfoveaveQueryResponse = {
   ExceptionMessage?: string;
 };
 
-export const INFOVEAVE_TENANT = "acmehealth";
-export const INFOVEAVE_BASE_URL = `https://${INFOVEAVE_TENANT}.infoveave.app`;
-
 class NgaugeStore {
   private readonly baseUrl = `${INFOVEAVE_BASE_URL}/api/v10/ngauge/forms`;
-  private readonly queryBaseUrl = `https://${INFOVEAVE_TENANT}.infoveave.app/api/v10/insights/queries`;
+  private readonly queryBaseUrl = `${INFOVEAVE_BASE_URL}/api/v10/insights/queries`;
 
   private getHeaders() {
     const token =

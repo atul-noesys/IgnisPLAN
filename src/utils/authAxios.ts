@@ -3,6 +3,7 @@ import axios, {
   AxiosError,
   InternalAxiosRequestConfig,
 } from "axios";
+import { installDevCorsInterceptor } from "@/utils/devCors";
 
 let authContextLogout: (() => void) | null = null;
 
@@ -18,6 +19,8 @@ export const registerAuthLogout = (logoutCallback: () => void) => {
  */
 export const createAuthAxiosInstance = (): AxiosInstance => {
   const instance = axios.create();
+
+  installDevCorsInterceptor(instance);
 
   // Request interceptor - add token to requests
   instance.interceptors.request.use(
@@ -43,6 +46,11 @@ export const createAuthAxiosInstance = (): AxiosInstance => {
     (error: AxiosError) => {
       // Handle 401 Unauthorized - token invalid or expired
       if (error.response?.status === 401) {
+        const url = error.config?.url?.toLowerCase() ?? "";
+        if (url.includes("/connect/")) {
+          return Promise.reject(error);
+        }
+
         console.warn("Token expired or invalid. Logging out...");
 
         // Clear auth data
@@ -68,3 +76,6 @@ export const createAuthAxiosInstance = (): AxiosInstance => {
 
 // Default instance
 export const authAxios = createAuthAxiosInstance();
+
+// Cover plain axios callers (ngauge-store, AuthContext current-user, etc.)
+installDevCorsInterceptor(axios);

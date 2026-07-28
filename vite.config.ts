@@ -10,7 +10,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 10002,
+    port: 10001,
     open: true,
   },
   build: {

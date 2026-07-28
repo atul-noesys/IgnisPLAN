@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios from "axios";
 import {
   createContext,
   useContext,
@@ -7,141 +7,13 @@ import {
   ReactNode,
   useEffect,
 } from "react";
-import { User, AuthContextType, RegisterData, UserRole } from "../types/auth";
-import {
-  isTokenValid,
-  getTokenExpiration,
-  decodeTokenSafely,
-} from "../utils/tokenValidator";
-import { authAxios, registerAuthLogout } from "../utils/authAxios";
-import {
-  INFOVEAVE_BASE_URL,
-  INFOVEAVE_TENANT,
-} from "@/store/ngauge-store";
+import { User, AuthContextType, RegisterData } from "../types/auth";
+import { isTokenValid, getTokenExpiration } from "../utils/tokenValidator";
+import { registerAuthLogout } from "../utils/authAxios";
+import { requestAccessToken } from "@/auth/login";
+import { getCurrentUser } from "@/auth/getCurrentUser";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const scopes = [
-  "openid",
-  "profile",
-  "email",
-  "infoveaveId",
-  "roles",
-  "v3",
-  "analysis.manage",
-  "analysis.read",
-  "analysis.execute",
-  "job.read",
-  "job.manage",
-  "task.read",
-  "task.manage",
-  "job.execute",
-  "scipyr.access",
-  "ml.access",
-  "datamanage.read",
-  "datamanage.manage",
-  "report.read",
-  "user.manage",
-  "report.manage",
-  "visualize.access",
-] as const;
-
-type TokenResponse = {
-  access_token: string;
-  expires_in?: number;
-};
-
-type CurrentUserResponse = {
-  id?: string | number;
-  userName?: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  roleName?: string;
-  company?: string;
-  createdOn?: string;
-};
-
-const urlEncodedParams = <T,>(config: AxiosRequestConfig<T>) => {
-  const newConfig = Object.assign({}, config);
-  newConfig.transformRequest = [
-    function (data: Record<string, string | number>) {
-      const str: string[] = [];
-      for (const p in data) {
-        if (data[p]) {
-          str.push(encodeURIComponent(p) + "=" + encodeURIComponent(data[p]));
-        }
-      }
-      return str.join("&");
-    },
-  ];
-  return newConfig;
-};
-
-const toAppRole = (roleName?: string): UserRole => {
-  const role = (roleName ?? "").toLowerCase();
-  if (role.includes("admin")) return "admin";
-  if (role.includes("manager")) return "manager";
-  if (role.includes("analyst")) return "analyst";
-  return "sdr";
-};
-
-const getCurrentUser = async (token: string): Promise<User> => {
-  try {
-    const { data } = await axios.get<CurrentUserResponse>(
-      `${INFOVEAVE_BASE_URL}/api/v10/User/CurrentUser`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    );
-
-    return {
-      id: `${data.id ?? data.userName ?? data.email ?? "user"}`,
-      email: data.email ?? "",
-      firstName: data.firstName ?? "",
-      lastName: data.lastName ?? "",
-      username: data.userName ?? "",
-      role: toAppRole(data.roleName),
-      company: data.company ?? "Infoveave",
-      createdAt: data.createdOn ?? new Date().toISOString(),
-    };
-  } catch (error) {
-    // Fall back to JWT claims when CurrentUser is unavailable for the tenant
-    console.warn("CurrentUser API failed, using JWT claims:", error);
-    const decoded = decodeTokenSafely(token);
-    if (!decoded) {
-      throw error;
-    }
-
-    const email =
-      (typeof decoded.email === "string" && decoded.email) ||
-      (typeof decoded.name === "string" && decoded.name) ||
-      "";
-    const firstName =
-      (typeof decoded.given_name === "string" && decoded.given_name) || "";
-    const lastName =
-      (typeof decoded.family_name === "string" && decoded.family_name) || "";
-    const username =
-      (typeof decoded.name === "string" && decoded.name) ||
-      (typeof decoded.sub === "string" && decoded.sub) ||
-      email;
-
-    return {
-      id: `${decoded.UserId ?? decoded.sub ?? username}`,
-      email,
-      firstName,
-      lastName,
-      username,
-      role: toAppRole(
-        typeof decoded.roles === "string" ? decoded.roles : undefined,
-      ),
-      company: "Infoveave",
-      createdAt: new Date().toISOString(),
-    };
-  }
-};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => {
@@ -216,71 +88,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeout);
   }, [user]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    try {
-      const response = await authAxios.post<TokenResponse>(
-        `${INFOVEAVE_BASE_URL}/connect/token`,
-        {
-          grant_type: "password",
+  const login = useCallback(
+    async (email: string, password: string, otp?: string) => {
+      setIsLoading(true);
+      try {
+        const response = await requestAccessToken({
           username: email,
           password,
-          scope: scopes.join(" "),
-          acr_values: `tenant:${INFOVEAVE_TENANT},otp:null`,
-          client_id: "Infoveave.WebApp",
-          client_secret: "B7190B8A-DDA2-43C1-A248-18AE9F8B25E9",
-        },
-        urlEncodedParams({
-          responseType: "json",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "x-web-app": "Infoveave",
-          },
-        }),
-      );
+          otp,
+        });
 
-      const accessToken = response.data?.access_token;
-      const expiresIn = response.data?.expires_in;
-      if (!accessToken) {
-        throw new Error("No access token received from login");
-      }
-
-      // Validate token before storing
-      if (!isTokenValid(accessToken)) {
-        throw new Error("Received token is invalid or expired");
-      }
-
-      localStorage.setItem("access_token", accessToken);
-
-      if (expiresIn) {
-        const expiryTimestamp = Math.floor(Date.now() / 1000) + expiresIn;
-        localStorage.setItem("token_expiry", expiryTimestamp.toString());
-      }
-
-      const userData = await getCurrentUser(accessToken);
-      setUser(userData);
-      localStorage.setItem("auth_user", JSON.stringify(userData));
-    } catch (error) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("token_expiry");
-      localStorage.removeItem("auth_user");
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status;
-        // Token endpoint failures (bad password) vs post-token API failures
-        if (!error.config?.url?.includes("/connect/token")) {
-          throw new Error(
-            status
-              ? `Login succeeded but user profile failed (${status})`
-              : "Login succeeded but user profile failed",
-          );
+        const accessToken = response?.access_token;
+        const expiresIn = response?.expires_in;
+        if (!accessToken) {
+          throw new Error("No access token received from login");
         }
-        throw new Error("Invalid credentials or login failed");
+
+        // Validate token before storing
+        if (!isTokenValid(accessToken)) {
+          throw new Error("Received token is invalid or expired");
+        }
+
+        localStorage.setItem("access_token", accessToken);
+
+        if (expiresIn) {
+          const expiryTimestamp = Math.floor(Date.now() / 1000) + expiresIn;
+          localStorage.setItem("token_expiry", expiryTimestamp.toString());
+        }
+
+        const userData = await getCurrentUser(accessToken);
+        setUser(userData);
+        localStorage.setItem("auth_user", JSON.stringify(userData));
+      } catch (error) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("token_expiry");
+        localStorage.removeItem("auth_user");
+        if (axios.isAxiosError(error)) {
+          const status = error.response?.status;
+          if (!error.config?.url?.includes("/connect/token")) {
+            throw new Error(
+              status
+                ? `Login succeeded but user profile failed (${status})`
+                : "Login succeeded but user profile failed",
+            );
+          }
+          throw new Error("Invalid credentials or login failed");
+        }
+        throw error;
+      } finally {
+        setIsLoading(false);
       }
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const logout = useCallback(() => {
     setUser(null);

@@ -38,6 +38,7 @@ import { DeclareEventPage } from "@/pages/DeclareEventPage";
 import { ReschedulePlanPage } from "@/pages/ReschedulePlanPage";
 import { RescheduleMoveEditPage } from "@/pages/RescheduleMoveEditPage";
 import { RescheduleRejectPage } from "@/pages/RescheduleRejectPage";
+import { InfoveaveGridProvider } from "@infoveave/ui-data-grid";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,85 +72,87 @@ const queryClient = new QueryClient({
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <MantineProvider>
-        <Notifications position="top-right" />
-        <AuthProvider>
-          <StoreProvider>
-            <PageChromeProvider>
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/login" element={<LoginPage />} />
+      <InfoveaveGridProvider>
+        <MantineProvider>
+          <Notifications position="top-right" />
+          <AuthProvider>
+            <StoreProvider>
+              <PageChromeProvider>
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/login" element={<LoginPage />} />
 
-                  <Route
-                    element={
-                      <ProtectedRoute>
-                        <Layout />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route path="/" element={<DashboardPage />} />
-                    <Route path="/services" element={<ServicesPage />} />
-                    <Route path="/services/new" element={<ServiceFormPage />} />
                     <Route
-                      path="/services/:id/edit"
-                      element={<ServiceFormPage />}
-                    />
-                    <Route path="/setups" element={<SetupsPage />} />
-                    <Route path="/setups/new" element={<SetupFormPage />} />
-                    <Route path="/setups/:id/edit" element={<SetupFormPage />} />
-                    <Route path="/patients" element={<PatientsPage />} />
-                    <Route path="/patients/new" element={<PatientFormPage />} />
-                    <Route
-                      path="/patients/:id/edit"
-                      element={<PatientFormPage />}
-                    />
-                    <Route path="/queue" element={<QueuePage />} />
-                    <Route path="/requests/new" element={<RequestIntakePage />} />
-                    <Route
-                      path="/requests/:id/cancel"
-                      element={<RequestCancelPage />}
-                    />
-                    <Route path="/assign-slot" element={<AssignSlotPage />} />
-                    <Route path="/schedule" element={<ScheduleDayPage />} />
-                    <Route
-                      path="/schedule/range"
-                      element={<ScheduleRangePage />}
-                    />
-                    <Route path="/beds" element={<BedsDayPage />} />
-                    <Route path="/beds/range" element={<BedsRangePage />} />
-                    <Route path="/bed-master" element={<Outlet />}>
-                      <Route index element={<BedsMasterPage />} />
-                      <Route path="new" element={<BedFormPage />} />
-                      <Route path="edit/:bedId" element={<BedFormPage />} />
+                      element={
+                        <ProtectedRoute>
+                          <Layout />
+                        </ProtectedRoute>
+                      }
+                    >
+                      <Route path="/" element={<DashboardPage />} />
+                      <Route path="/services" element={<ServicesPage />} />
+                      <Route path="/services/new" element={<ServiceFormPage />} />
+                      <Route
+                        path="/services/:id/edit"
+                        element={<ServiceFormPage />}
+                      />
+                      <Route path="/setups" element={<SetupsPage />} />
+                      <Route path="/setups/new" element={<SetupFormPage />} />
+                      <Route path="/setups/:id/edit" element={<SetupFormPage />} />
+                      <Route path="/patients" element={<PatientsPage />} />
+                      <Route path="/patients/new" element={<PatientFormPage />} />
+                      <Route
+                        path="/patients/:id/edit"
+                        element={<PatientFormPage />}
+                      />
+                      <Route path="/queue" element={<QueuePage />} />
+                      <Route path="/requests/new" element={<RequestIntakePage />} />
+                      <Route
+                        path="/requests/:id/cancel"
+                        element={<RequestCancelPage />}
+                      />
+                      <Route path="/assign-slot" element={<AssignSlotPage />} />
+                      <Route path="/schedule" element={<ScheduleDayPage />} />
+                      <Route
+                        path="/schedule/range"
+                        element={<ScheduleRangePage />}
+                      />
+                      <Route path="/beds" element={<BedsDayPage />} />
+                      <Route path="/beds/range" element={<BedsRangePage />} />
+                      <Route path="/bed-master" element={<Outlet />}>
+                        <Route index element={<BedsMasterPage />} />
+                        <Route path="new" element={<BedFormPage />} />
+                        <Route path="edit/:bedId" element={<BedFormPage />} />
+                      </Route>
+                      <Route path="/bookings/:id" element={<BookingDetailPage />} />
+                      <Route
+                        path="/bookings/:id/cancel"
+                        element={<BookingCancelPage />}
+                      />
+                      <Route path="/events" element={<EventsLogPage />} />
+                      <Route path="/events/declare" element={<DeclareEventPage />} />
+                      <Route path="/events/:id" element={<EventDetailPage />} />
+                      <Route
+                        path="/reschedule/:planId"
+                        element={<ReschedulePlanPage />}
+                      />
+                      <Route
+                        path="/reschedule/:planId/moves/:moveId"
+                        element={<RescheduleMoveEditPage />}
+                      />
+                      <Route
+                        path="/reschedule/:planId/reject"
+                        element={<RescheduleRejectPage />}
+                      />
+                      <Route path="*" element={<Navigate to="/" replace />} />
                     </Route>
-                    <Route path="/bookings/:id" element={<BookingDetailPage />} />
-                    <Route
-                      path="/bookings/:id/cancel"
-                      element={<BookingCancelPage />}
-                    />
-                    <Route path="/events" element={<EventsLogPage />} />
-                    <Route path="/events/declare" element={<DeclareEventPage />} />
-                    <Route path="/events/:id" element={<EventDetailPage />} />
-                    <Route
-                      path="/reschedule/:planId"
-                      element={<ReschedulePlanPage />}
-                    />
-                    <Route
-                      path="/reschedule/:planId/moves/:moveId"
-                      element={<RescheduleMoveEditPage />}
-                    />
-                    <Route
-                      path="/reschedule/:planId/reject"
-                      element={<RescheduleRejectPage />}
-                    />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Route>
-                </Routes>
-              </BrowserRouter>
-            </PageChromeProvider>
-          </StoreProvider>
-        </AuthProvider>
-      </MantineProvider>
+                  </Routes>
+                </BrowserRouter>
+              </PageChromeProvider>
+            </StoreProvider>
+          </AuthProvider>
+        </MantineProvider>
+      </InfoveaveGridProvider>
     </QueryClientProvider>
   );
 }

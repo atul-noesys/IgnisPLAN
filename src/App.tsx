@@ -5,6 +5,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/notifications/styles.css";
+import "@/styles/design-system.css";
 import "@/styles/prototype.css";
 import "@/styles/app-overrides.css";
 import { AuthProvider } from "@/context/AuthContext";

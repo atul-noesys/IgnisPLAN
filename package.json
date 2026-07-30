@@ -29,12 +29,14 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "@types/node": "^20.10.6",
     "@types/react": "^19.0.0-rc.0",
     "@types/react-dom": "^19.0.0-rc.0",
     "@types/uuid": "^9.0.7",
     "@vitejs/plugin-react": "^4.2.1",
     "eslint": "^8.54.0",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.2.2",
     "vite": "^5.0.8"
   },

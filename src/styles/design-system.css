@@ -1,6 +1,5 @@
-/* Infoveave design system (includes Tailwind) + scan ui-data-grid dist */
-@import "@infoveave/design-system/styles.css";
+/* Tailwind v4 + scan app and ui-data-grid for utility classes */
+@import "tailwindcss";
 
 @source "../**/*.{ts,tsx}";
 @source "../../node_modules/@infoveave/ui-data-grid/dist/**/*.{js,mjs}";
-@source "../../node_modules/@infoveave/ui-primitives/dist/**/*.{js,mjs}";
